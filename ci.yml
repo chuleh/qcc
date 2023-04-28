@@ -1,0 +1,67 @@
+name: Build and Deploy Docker Images
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build microservice_a Docker image
+        run: docker build -t microservice_a .
+        continue-on-error: true
+
+      - name: Test microservice_a
+        run: python test_script.py microservice_a
+        continue-on-error: true
+
+      - name: Deploy microservice_a Docker image
+        if: steps.build-microservice_a.outputs.status == 'success' && steps.test-microservice_a.outputs.status == 'success'
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker push microservice_a
+
+      - name: Build microservice_b Docker image
+        run: docker build -t microservice_b .
+        continue-on-error: true
+
+      - name: Test microservice_b
+        run: python test_script.py microservice_b
+        continue-on-error: true
+
+      - name: Deploy microservice_b Docker image
+        if: steps.build-microservice_b.outputs.status == 'success' && steps.test-microservice_b.outputs.status == 'success'
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker push microservice_b
+
+      - name: Build microservice_c Docker image
+        run: docker build -t microservice_c .
+        continue-on-error: true
+
+      - name: Test microservice_c
+        run: python test_script.py microservice_c
+        continue-on-error: true
+
+      - name: Fail if any Docker image failed to build
+        run: |
+          if [ $(docker images -f "dangling=true" -q | wc -l) -ne 0 ]; then
+            echo "Error: Docker image build failed"
+            exit 1
+          fi
+
+      - name: Deploy microservice_c Docker image
+        if: steps.build-microservice_c.outputs.status == 'success' && steps.test-microservice_c.outputs.status == 'success'
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker push microservice_c
+
+      - name: Set pipeline status
+        if: failure()
+        run: exit 1
