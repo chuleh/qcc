@@ -11,7 +11,7 @@ test:
 	$(MAKE) clean test_ms_a test_ms_b test_ms_c
 
 test_%:
-	$(PYTHON) unit_test.py $*
+	$(PYTHON) test_ms.py $*
 
 clean:
 	rm -f ./test-reports/*
